@@ -20,7 +20,7 @@ page falls back to your system fonts and everything still works.
 
 ## What's inside
 
-**Sound Library** — 160 techno-specific sounds across kicks, snares,
+**Sound Library** — 330+ techno-specific sounds across kicks, snares,
 hats/cymbals, percussion, bass/sub, leads/arps, pads/drones, vocal
 chops, FX/risers, and textures. Every card shows the exact keyword
 phrase to paste into Suno's *Style of Music* field, a plain-English
@@ -82,14 +82,16 @@ anywhere.
 ## Folder structure
 
 ```
-index.html            entry point — open this
-css/style.css          all styling
-js/data-sounds.js      sound library data (160 entries)
-js/data-recipes.js     25 full track-formula recipes
-js/data-glossary.js    33 glossary entries
-js/data-cheatsheet.js  Suno mechanics reference data
-js/audio-engine.js     Web Audio synthesis + groove transport scheduler
-js/app.js              UI state, rendering, event wiring
+index.html              entry point — open this
+css/style.css           all styling
+js/data-sounds.js       core sound library
+js/data-sounds-v3.js    v3 expansion sounds
+js/data-sounds-v4.js    v4 expansion sounds
+js/data-recipes.js      25 full track-formula recipes
+js/data-glossary.js     33 glossary entries
+js/data-cheatsheet.js   Suno mechanics reference data
+js/audio-engine.js      Web Audio synthesis + groove transport scheduler
+js/app.js               UI state, rendering, event wiring
 ```
 
 No dependencies, no `npm install`, nothing to build. Edit the data files

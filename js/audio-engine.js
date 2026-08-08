@@ -555,6 +555,329 @@ class TechnoAudioEngine {
         src.start(time); src.stop(time + decay + 0.03);
         return decay + 0.08;
       }
+      case 'guiro': {
+        // long scraped noise with a moving bandpass (the "rack-tat" of a guiro)
+        const strokes = p.strokes || 3;
+        const strokeDur = decay / strokes;
+        for (let i = 0; i < strokes; i++) {
+          const t = time + i * strokeDur;
+          const src = this._noiseSource('white');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 8;
+          bp.frequency.setValueAtTime(p.pitch || 1800, t);
+          bp.frequency.linearRampToValueAtTime((p.pitch || 1800) * 2.4, t + strokeDur * 0.8);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.35, t + 0.004);
+          g.gain.exponentialRampToValueAtTime(0.001, t + strokeDur * 0.9);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + strokeDur + 0.02);
+        }
+        return decay + 0.1;
+      }
+      case 'cabasa': {
+        // dense metallic beads shaking — many short high-Q bursts
+        const shakes = 10;
+        for (let i = 0; i < shakes; i++) {
+          const t = time + (i / shakes) * decay;
+          const src = this._noiseSource('white');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.value = (p.pitch || 6000) * (0.7 + Math.random() * 0.6); bp.Q.value = 12;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.18, t + 0.002);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + 0.05);
+        }
+        return decay + 0.1;
+      }
+      case 'tabla': {
+        // pitched Indian drum: a sine/triangle with a quick pitch drop + a "na" click
+        const o = ctx.createOscillator(); o.type = 'triangle';
+        o.frequency.setValueAtTime((p.pitch || 220) * 1.25, time);
+        o.frequency.exponentialRampToValueAtTime(p.pitch || 220, time + 0.04);
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = p.filterFreq || 2600;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.7, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+        o.connect(f); f.connect(g); g.connect(out);
+        const src = this._noiseSource('pink');
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.2, time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+        src.connect(hp); hp.connect(ng); ng.connect(out);
+        o.start(time); o.stop(time + decay + 0.05);
+        src.start(time); src.stop(time + 0.04);
+        return decay + 0.1;
+      }
+      case 'cuica': {
+        // Brazilian friction drum — a rising-then-falling pitched "yelp"
+        const o = ctx.createOscillator(); o.type = 'triangle';
+        const peak = (p.pitch || 320) * 1.8;
+        o.frequency.setValueAtTime(p.pitch || 320, time);
+        o.frequency.linearRampToValueAtTime(peak, time + decay * 0.4);
+        o.frequency.exponentialRampToValueAtTime(p.pitch || 320, time + decay);
+        const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 4;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.linearRampToValueAtTime(0.5, time + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + decay + 0.05);
+        return decay + 0.1;
+      }
+      case 'castanet': {
+        // very short high wooden clack — two near-simultaneous clicks
+        for (let i = 0; i < 2; i++) {
+          const t = time + i * 0.012;
+          const src = this._noiseSource('white');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.value = (p.pitch || 2200) * (i ? 1.1 : 1); bp.Q.value = 14;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.5, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + 0.03);
+        }
+        return 0.12;
+      }
+      case 'eclap': {
+        // electronic/clap-along: a tight synthesized clap without noise bursts
+        const o = ctx.createOscillator(); o.type = 'square';
+        o.frequency.setValueAtTime(p.pitch || 1200, time);
+        o.frequency.exponentialRampToValueAtTime((p.pitch || 1200) * 0.5, time + 0.06);
+        const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = p.filterFreq || 1800; f.Q.value = 6;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.exponentialRampToValueAtTime(0.5, time + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + 0.22);
+        return 0.25;
+      }
+      case 'talking': {
+        // talking-drum-ish: a pitched bend with resonant vowel-like filtering
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime((p.pitch || 180) * 0.8, time);
+        o.frequency.linearRampToValueAtTime((p.pitch || 180) * 1.4, time + decay * 0.5);
+        o.frequency.linearRampToValueAtTime(p.pitch || 180, time + decay);
+        const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+        f.frequency.setValueAtTime(800, time);
+        f.frequency.linearRampToValueAtTime(1500, time + decay * 0.5);
+        f.frequency.linearRampToValueAtTime(900, time + decay);
+        f.Q.value = 8;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.linearRampToValueAtTime(0.5, time + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + decay + 0.05);
+        return decay + 0.1;
+      }
+      case 'stick': {
+        // crossed drumsticks — two hard wooden clicks at different pitches
+        [0, 0.03].forEach((off, i) => {
+          const t = time + off;
+          const src = this._noiseSource('white');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.value = (p.pitch || 2600) * (i ? 1.25 : 1); bp.Q.value = 16;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.4, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + 0.04);
+        });
+        return 0.15;
+      }
+      case 'agogo': {
+        // two-tone agogo bell — high then low wooden-bell ping
+        [1, 0.72].forEach((mult, i) => {
+          const t = time + i * 0.07;
+          const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = (p.pitch || 900) * mult;
+          const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = (p.pitch || 900) * mult * 2; f.Q.value = 6;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.3, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          o.connect(f); f.connect(g); g.connect(out);
+          o.start(t); o.stop(t + 0.22);
+        });
+        return 0.35;
+      }
+      case 'kick-perc': {
+        // electronic 808-ish tom / percussive kick used as tonal percussion
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime((p.pitch || 180) * 1.4, time);
+        o.frequency.exponentialRampToValueAtTime(p.pitch || 180, time + 0.05);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.6, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+        o.connect(g); g.connect(out);
+        o.start(time); o.stop(time + decay + 0.05);
+        return decay + 0.1;
+      }
+      case 'claves': {
+        // two resonant high wooden clicks a few ms apart
+        [0, 0.018].forEach((off, i) => {
+          const t = time + off;
+          const o = ctx.createOscillator(); o.type = 'sine';
+          o.frequency.value = (p.pitch || 2500) * (i ? 1.06 : 1);
+          const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+          f.frequency.value = (p.pitch || 2500) * 1.1; f.Q.value = 30;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.5, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+          o.connect(f); f.connect(g); g.connect(out);
+          o.start(t); o.stop(t + 0.06);
+        });
+        return 0.15;
+      }
+      case 'triangle': {
+        // a single struck metal triangle — bright inharmonic ping with long ring
+        const ratios = [1, 2.1, 3.3, 5.2];
+        ratios.forEach((r, i) => {
+          const o = ctx.createOscillator(); o.type = 'sine';
+          o.frequency.value = (p.pitch || 1800) * r;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.22 / (i + 1), time);
+          g.gain.exponentialRampToValueAtTime(0.001, time + decay * (1 - i * 0.1));
+          o.connect(g); g.connect(out);
+          o.start(time); o.stop(time + decay + 0.1);
+        });
+        const src = this._noiseSource('white');
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.value = (p.pitch || 1800) * 2; bp.Q.value = 20;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.15, time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+        src.connect(bp); bp.connect(ng); ng.connect(out);
+        src.start(time); src.stop(time + 0.04);
+        return decay + 0.1;
+      }
+      case 'vibraslap': {
+        // wooden rattle — many short, slightly random resonant knocks
+        const knocks = 14;
+        for (let i = 0; i < knocks; i++) {
+          const t = time + i * 0.025;
+          const src = this._noiseSource('white');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.value = (p.pitch || 1600) * (0.7 + Math.random() * 0.6); bp.Q.value = 25;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.25, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + 0.05);
+        }
+        return decay + 0.1;
+      }
+      case 'jingle': {
+        // sleigh bells / jingle — many tiny high metallic pings in a cluster
+        const bells = 9;
+        for (let i = 0; i < bells; i++) {
+          const t = time + Math.random() * 0.08;
+          const o = ctx.createOscillator(); o.type = 'sine';
+          o.frequency.value = (p.pitch || 5000) * (0.7 + Math.random() * 0.8);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.1, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+          o.connect(g); g.connect(out);
+          o.start(t); o.stop(t + 0.16);
+        }
+        return decay + 0.1;
+      }
+      case 'surdo': {
+        // deep Brazilian bass drum — round low tone with soft attack
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime((p.pitch || 110) * 1.2, time);
+        o.frequency.exponentialRampToValueAtTime(p.pitch || 110, time + 0.09);
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.7, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + decay + 0.05);
+        return decay + 0.1;
+      }
+      case 'repinique': {
+        // high, bright samba drum — a tonal snap with a sharp attack
+        const o = ctx.createOscillator(); o.type = 'triangle';
+        o.frequency.setValueAtTime((p.pitch || 360) * 1.5, time);
+        o.frequency.exponentialRampToValueAtTime(p.pitch || 360, time + 0.03);
+        const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 800;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.55, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+        o.connect(f); f.connect(g); g.connect(out);
+        const src = this._noiseSource('white');
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 4000; bp.Q.value = 2;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.2, time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
+        src.connect(bp); bp.connect(ng); ng.connect(out);
+        o.start(time); o.stop(time + decay + 0.05);
+        src.start(time); src.stop(time + 0.03);
+        return decay + 0.1;
+      }
+      case 'tamborim': {
+        // small, dry, high-pitched samba frame drum — a sharp dry slap
+        const src = this._noiseSource('white');
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.value = p.pitch || 2800; bp.Q.value = 6;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.55, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+        src.connect(bp); bp.connect(g); g.connect(out);
+        src.start(time); src.stop(time + 0.05);
+        return 0.1;
+      }
+      case 'caxixi': {
+        // woven basket shaker — soft, grainy, mid-frequency rattle
+        const grains = 22;
+        for (let i = 0; i < grains; i++) {
+          const t = time + (i / grains) * decay;
+          const src = this._noiseSource('pink');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.value = 3000 + Math.random() * 3000; bp.Q.value = 4;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.08 + Math.random() * 0.08, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + 0.05);
+        }
+        return decay + 0.1;
+      }
+      case 'clave-electro': {
+        // an electronic clave / rim — a short pitched tone with a hard click
+        const o = ctx.createOscillator(); o.type = 'square';
+        o.frequency.value = p.pitch || 1400;
+        const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+        f.frequency.value = p.filterFreq || 3000; f.Q.value = 10;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.4, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + 0.06);
+        return 0.1;
+      }
+      case 'foot': {
+        // a soft foot-stomp / body percussion — low thud + short noise slap
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(140, time);
+        o.frequency.exponentialRampToValueAtTime(70, time + 0.05);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.6, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+        o.connect(g); g.connect(out);
+        const src = this._noiseSource('brown');
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.3, time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        src.connect(lp); lp.connect(ng); ng.connect(out);
+        o.start(time); o.stop(time + 0.2);
+        src.start(time); src.stop(time + 0.06);
+        return 0.3;
+      }
       default: return 0.1;
     }
   }
@@ -1140,6 +1463,185 @@ class TechnoAudioEngine {
         }
         o.start(time); o.stop(time + dur + 0.1);
         return dur + 0.2;
+      }
+      case 'vinylScratch': {
+        // a back-and-forth record scratch: filtered noise swept up then down
+        const segs = 2;
+        for (let i = 0; i < segs; i++) {
+          const t = time + (i / segs) * dur;
+          const sd = dur / segs;
+          const src = this._noiseSource('white');
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 5;
+          bp.frequency.setValueAtTime(i % 2 ? (p.endFreq || 6000) : (p.startFreq || 800), t);
+          bp.frequency.exponentialRampToValueAtTime(i % 2 ? (p.startFreq || 800) : (p.endFreq || 6000), t + sd);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.4, t + 0.02);
+          g.gain.setValueAtTime(0.4, t + sd - 0.05);
+          g.gain.exponentialRampToValueAtTime(0.001, t + sd);
+          src.connect(bp); bp.connect(g); g.connect(out);
+          src.start(t); src.stop(t + sd + 0.05);
+        }
+        return dur + 0.2;
+      }
+      case 'gunshot': {
+        // short, very loud transient: sharp noise crack + sub thump
+        const src = this._noiseSource('white');
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.8, time);
+        ng.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+        src.connect(hp); hp.connect(ng); ng.connect(out);
+        src.start(time); src.stop(time + 0.1);
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(120, time);
+        o.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+        const og = ctx.createGain();
+        og.gain.setValueAtTime(0.7, time);
+        og.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+        o.connect(og); og.connect(out);
+        o.start(time); o.stop(time + 0.35);
+        return 0.5;
+      }
+      case 'stutterKick': {
+        // rapid retriggered mini-kicks that accelerate into a drop
+        const hits = 10;
+        for (let i = 0; i < hits; i++) {
+          const t = time + dur * Math.pow(i / hits, 2);
+          this.kick(t, { startFreq: 160, endFreq: 50, pitchDecay: 0.04, ampDecay: 0.12, drive: 0.3, click: 0.4, sub: 0.4 }, out);
+        }
+        return dur + 0.3;
+      }
+      case 'beep': {
+        // clean warning/alarm beep that repeats
+        const reps = Math.max(2, Math.floor(dur / 0.25));
+        for (let i = 0; i < reps; i++) {
+          const t = time + i * (dur / reps);
+          const o = ctx.createOscillator(); o.type = 'square';
+          o.frequency.value = p.startFreq || 1000;
+          const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = p.startFreq || 1000; f.Q.value = 4;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.25, t + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.001, t + (dur / reps) * 0.5);
+          o.connect(f); f.connect(g); g.connect(out);
+          o.start(t); o.stop(t + (dur / reps) * 0.6);
+        }
+        return dur + 0.2;
+      }
+      case 'noiseImpact': {
+        // a single huge noise hit with a fast downward whoosh (cinematic impact without sub)
+        const src = this._noiseSource('white');
+        const bp = ctx.createBiquadFilter(); bp.type = 'lowpass';
+        bp.frequency.setValueAtTime(p.startFreq || 8000, time);
+        bp.frequency.exponentialRampToValueAtTime(p.endFreq || 400, time + 0.4);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.7, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.6);
+        src.connect(bp); bp.connect(g); g.connect(out);
+        src.start(time); src.stop(time + 0.7);
+        return 0.8;
+      }
+      case 'phoneRing': {
+        // two-tone telephone-style ring, useful as a quirky techno accent
+        const freqs = [p.startFreq || 440, p.endFreq || 480];
+        const reps = Math.max(2, Math.floor(dur / 0.3));
+        for (let i = 0; i < reps; i++) {
+          const t = time + i * (dur / reps);
+          freqs.forEach((freq, j) => {
+            const o = ctx.createOscillator(); o.type = 'sine';
+            o.frequency.value = freq;
+            const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 20;
+            const g = ctx.createGain();
+            const seg = (dur / reps) / 2;
+            g.gain.setValueAtTime(0.0001, t + j * seg);
+            g.gain.linearRampToValueAtTime(0.18, t + j * seg + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.001, t + (j + 1) * seg - 0.01);
+            o.connect(f); f.connect(g); g.connect(out);
+            o.start(t + j * seg); o.stop(t + (j + 1) * seg);
+          });
+        }
+        return dur + 0.2;
+      }
+      case 'reverbedClap': {
+        // a single big reverb clap used as a transition accent
+        const t0 = time;
+        for (let i = 0; i < 5; i++) {
+          const t = t0 + i * 0.012;
+          this.perc(t, { type: 'clap', filterFreq: 1600, decay: 0.4, bursts: 5, reverb: true }, out);
+        }
+        return dur + 0.2;
+      }
+      case 'risingTone': {
+        // a clean saw tone rising an octave or two with a slow volume swell
+        const o = ctx.createOscillator(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(p.startFreq || 220, time);
+        o.frequency.exponentialRampToValueAtTime(p.endFreq || 880, time + dur);
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 3000; f.Q.value = 3;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.exponentialRampToValueAtTime(0.35, time + dur * 0.9);
+        g.gain.linearRampToValueAtTime(0.0001, time + dur);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + dur + 0.1);
+        return dur + 0.2;
+      }
+      case 'pulseAlarm': {
+        // a pulsing single-pitch alarm (heartbeat-like) over the duration
+        const pulses = Math.max(3, Math.floor(dur / 0.18));
+        for (let i = 0; i < pulses; i++) {
+          const t = time + i * (dur / pulses);
+          const o = ctx.createOscillator(); o.type = 'square';
+          o.frequency.value = p.startFreq || 800;
+          const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = p.startFreq || 800; f.Q.value = 8;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.22, t + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+          o.connect(f); f.connect(g); g.connect(out);
+          o.start(t); o.stop(t + 0.12);
+        }
+        return dur + 0.2;
+      }
+      case 'subSwell': {
+        // a slow sub swell: low sine rising in volume, no pitch change
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.value = p.startFreq || 55;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.linearRampToValueAtTime(0.6, time + dur * 0.8);
+        g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+        o.connect(g); g.connect(out);
+        o.start(time); o.stop(time + dur + 0.1);
+        return dur + 0.2;
+      }
+      case 'feedbackSweep': {
+        // a feedback-like rising whine: high resonant self-oscillating character
+        const o = ctx.createOscillator(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(p.startFreq || 300, time);
+        o.frequency.exponentialRampToValueAtTime(p.endFreq || 4000, time + dur);
+        const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+        f.frequency.setValueAtTime(p.startFreq || 300, time);
+        f.frequency.exponentialRampToValueAtTime(p.endFreq || 4000, time + dur);
+        f.Q.value = 18;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.exponentialRampToValueAtTime(0.3, time + dur * 0.9);
+        g.gain.linearRampToValueAtTime(0.0001, time + dur);
+        o.connect(f); f.connect(g); g.connect(out);
+        o.start(time); o.stop(time + dur + 0.1);
+        return dur + 0.2;
+      }
+      case 'snapImpact': {
+        // a short finger-snap/crackle impact (transient only)
+        const src = this._noiseSource('white');
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.6, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+        src.connect(hp); hp.connect(g); g.connect(out);
+        src.start(time); src.stop(time + 0.08);
+        return 0.2;
       }
       default: return dur;
     }
