@@ -110,8 +110,39 @@
     auditioning: false,
     auditioningId: null,
     promptBuilder: defaultPromptBuilder(),
+    wildcard: defaultWildcardState(),
     groove: { bpm: 128, swing: 0 }
   };
+
+  // ------------------------------------------------------------- WILDCARDS
+  function defaultWildcardState() {
+    // one entry per pool; locked=false and a randomly chosen starting tag
+    return {
+      slots: window.WILDCARD_POOLS.map(pool => ({
+        id: pool.id, locked: false, tag: randomFrom(pool.tags)
+      })),
+      appendToPrompt: true
+    };
+  }
+  function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function getWildcardSlot(id) { return state.wildcard.slots.find(s => s.id === id); }
+  function getActiveWildcardTags() {
+    return state.wildcard.slots
+      .filter(s => s.tag)
+      .map(s => s.tag);
+  }
+  function rerollWildcard(id) {
+    const slot = getWildcardSlot(id);
+    if (!slot || slot.locked) return;
+    const pool = window.WILDCARD_POOLS.find(p => p.id === id);
+    if (!pool) return;
+    let next;
+    do { next = randomFrom(pool.tags); } while (next === slot.tag && pool.tags.length > 1);
+    slot.tag = next;
+  }
+  function rerollAllWildcards() {
+    state.wildcard.slots.forEach(s => rerollWildcard(s.id));
+  }
 
   // ----------------------------------------------------- PERSISTED BUILDER
   const BUILDER_STORAGE_KEY = 'stt-prompt-builder-v2';
@@ -129,7 +160,12 @@
   }
 
   function compileStylePrompt() {
-    const pb = state.promptBuilder;
+    return compileStylePromptWith(state.promptBuilder);
+  }
+  // Compiles a style prompt. When the wildcard tab has append enabled, the
+  // rolled tags are injected just before the negative tag, so the negative
+  // stays last (where Suno applies exclusions most reliably).
+  function compileStylePromptWith(pb) {
     const parts = [];
     if (pb.genreTag.trim()) parts.push(pb.genreTag.trim());
     if (pb.moodTags.trim()) parts.push(pb.moodTags.trim());
@@ -137,6 +173,8 @@
     if (pb.productionTags && pb.productionTags.trim()) parts.push(pb.productionTags.trim());
     if (pb.bpm) parts.push(`${pb.bpm} BPM`);
     if (pb.key.trim()) parts.push(pb.key.trim());
+    const extras = (pb && pb.extraTags) ? pb.extraTags : getActiveWildcardTags();
+    if (state.wildcard.appendToPrompt && extras.length) extras.forEach(t => parts.push(t));
     if (pb.negative.trim()) parts.push(pb.negative.trim());
     return parts.filter(Boolean).join(', ');
   }
@@ -169,6 +207,7 @@
           <button class="tab-btn" data-action="switch-tab" data-tab="recipes">Track Formulas</button>
           <button class="tab-btn" data-action="switch-tab" data-tab="glossary">Glossary</button>
           <button class="tab-btn" data-action="switch-tab" data-tab="builder">Prompt Builder</button>
+          <button class="tab-btn" data-action="switch-tab" data-tab="wildcards">🎲 Wildcards</button>
           <button class="tab-btn" data-action="switch-tab" data-tab="cheatsheet">Suno Cheat Sheet</button>
         </nav>
       </header>
@@ -238,6 +277,7 @@
       case 'recipes': html = renderRecipes(); break;
       case 'glossary': html = renderGlossary(); break;
       case 'builder': html = renderBuilder(); break;
+      case 'wildcards': html = renderWildcards(); break;
       case 'cheatsheet': html = renderCheatsheet(); break;
     }
     panel.innerHTML = html;
@@ -289,6 +329,7 @@
         <input type="search" class="search-input" data-action="search-sounds" placeholder="Search sounds, keywords, descriptions\u2026" value="${escapeAttr(state.soundSearch)}">
         <label class="fav-toggle"><input type="checkbox" data-action="toggle-fav-filter" ${state.soundFavoritesOnly ? 'checked' : ''}> \u2605 Favorites only</label>
         <button class="btn btn-audition" data-action="audition-sounds" ${list.length ? '' : 'disabled'}>${auditionLabel}</button>
+        <button class="btn btn-ghost" data-action="surprise-sound" ${list.length ? '' : 'disabled'}>🎲 Surprise me</button>
       </div>
       <div class="chip-row">${chips}</div>
       <div class="result-count">${list.length} sound${list.length === 1 ? '' : 's'}</div>
@@ -470,6 +511,9 @@
 
         <section class="builder-col">
           <h3>3. Style prompt output <span class="char-count${over ? ' over' : ''}">${compiled.length} / 1000 chars</span></h3>
+          ${state.wildcard.appendToPrompt && getActiveWildcardTags().length
+            ? `<div class="wildcard-hint">🎲 ${getActiveWildcardTags().length} wildcard tag(s) appended before the negative tag — <button type="button" class="link-btn" data-action="goto-wildcards">edit wildcards</button></div>`
+            : '<div class="wildcard-hint muted">🎲 No wildcards active — <button type="button" class="link-btn" data-action="goto-wildcards">add wildcard chaos</button></div>'}
           <button class="copy-block big" data-action="copy-key" data-key="builder-style">
             <code>${compiled ? escapeAttr(compiled) : '<em>Add a genre tag or a sound to get started\u2026</em>'}</code>
             <span class="copy-hint">\u2367 copy style prompt</span>
@@ -487,6 +531,83 @@
           <button class="btn btn-ghost" data-action="clear-builder">\u21ba Clear builder</button>
         </section>
       </div>
+    `;
+  }
+
+  // ---- Wildcards ----
+  function renderWildcards() {
+    const wc = state.wildcard;
+    const activeTags = getActiveWildcardTags();
+
+    // The core prompt (genre/mood/sound/production) WITHOUT wildcard tags.
+    const corePb = Object.assign({}, state.promptBuilder, { extraTags: [] });
+    const corePrompt = compileStylePromptWith(corePb);
+    const fullPrompt = wc.appendToPrompt && activeTags.length
+      ? corePrompt + (corePrompt ? ', ' : '') + activeTags.join(', ')
+      : corePrompt;
+    registerCopy('wildcard-full', fullPrompt);
+    registerCopy('wildcard-core', corePrompt);
+
+    const cards = wc.slots.map(slot => {
+      const pool = window.WILDCARD_POOLS.find(p => p.id === slot.id);
+      return `
+        <article class="wildcard-card${slot.locked ? ' locked' : ''}" data-wildcard-id="${slot.id}">
+          <header class="wildcard-head">
+            <span class="wildcard-icon">${pool.icon}</span>
+            <div class="wildcard-meta">
+              <h4>${pool.label}</h4>
+              <p>${pool.blurb}</p>
+            </div>
+            <button class="lock-btn${slot.locked ? ' active' : ''}" data-action="toggle-wildcard-lock" data-id="${slot.id}" title="${slot.locked ? 'Locked — click to unlock' : 'Lock this tag'}">
+              ${slot.locked ? '🔒' : '🔓'}
+            </button>
+          </header>
+          <div class="wildcard-tag">${escapeAttr(slot.tag)}</div>
+          <div class="wildcard-actions">
+            <button class="btn btn-ghost small" data-action="reroll-wildcard" data-id="${slot.id}" ${slot.locked ? 'disabled' : ''}>🎲 Re-roll</button>
+            <button class="btn btn-ghost small" data-action="clear-wildcard" data-id="${slot.id}" ${slot.locked ? 'disabled' : ''}>Clear</button>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    const presetBtns = window.WILDCARD_PRESETS.map(pr =>
+      `<button class="btn btn-ghost small" data-action="apply-wildcard-preset" data-preset="${pr.id}" title="${escapeAttr(pr.note)}">${pr.icon} ${pr.label}</button>`
+    ).join('');
+
+    return `
+      <div class="wildcard-intro">
+        <h2>🎲 Wildcard Prompt Injector</h2>
+        <p>Build your core prompt in the <strong>Prompt Builder</strong>, then roll these cards to append weird, off-genre tags and force Suno out of its comfort zone. <strong>Lock 🔒 a card</strong> to freeze a tag you love — it survives every re-roll. Only unlocked cards change.</p>
+      </div>
+
+      <div class="wildcard-toolbar">
+        <button class="btn btn-wildcard" data-action="reroll-all-wildcards">🎲 Re-roll all unlocked</button>
+        <div class="wildcard-presets">${presetBtns}</div>
+        <label class="fav-toggle"><input type="checkbox" data-action="toggle-wildcard-append" ${wc.appendToPrompt ? 'checked' : ''}> Append tags to final prompt</label>
+      </div>
+
+      <div class="wildcard-grid">${cards}</div>
+
+      <section class="wildcard-output">
+        <h3>Wildcard tags <span class="hint-sm">(${activeTags.length} active — appended last, after the negative tag stays last)</span></h3>
+        <div class="kw-chip-row">
+          ${activeTags.length
+            ? activeTags.map(t => `<span class="kw-chip wildcard-chip">${escapeAttr(t)}</span>`).join('')
+            : '<span class="empty-hint">Roll the cards to inject some chaos.</span>'}
+        </div>
+
+        <h3>Final style prompt <span class="char-count${fullPrompt.length > 1000 ? ' over' : ''}">${fullPrompt.length} / 1000 chars</span></h3>
+        <button class="copy-block big wildcard-final" data-action="copy-key" data-key="wildcard-full">
+          <code>${fullPrompt ? escapeAttr(fullPrompt) : '<em>Build a core prompt in the Prompt Builder, then roll…</em>'}</code>
+          <span class="copy-hint">⧉ copy final prompt</span>
+        </button>
+        <div class="wildcard-footer-actions">
+          <button class="btn btn-ghost small" data-action="copy-key" data-key="wildcard-core">⧉ copy core only (no wildcards)</button>
+          <button class="btn btn-ghost small" data-action="goto-builder">← Edit core prompt in Builder</button>
+        </div>
+        <p class="hint-sm">Tip: lock 2 cards you like and keep re-rolling the rest — the locked core formula stays frozen while the weirdness rotates.</p>
+      </section>
     `;
   }
 
@@ -558,6 +679,42 @@
         const s = findSound(actionEl.dataset.id);
         if (s) window.audioEngine.preview(s, window.audioEngine.master);
         flashPlaying(actionEl);
+        break;
+      }
+
+      case 'surprise-sound': {
+        // Picks and plays one random sound from the currently filtered view.
+        if (state.auditioning) {
+          window.audioEngine.stopPreviewQueue();
+          state.auditioning = false;
+          state.auditioningId = null;
+        }
+        const activeCat = state.soundCategoryFilter;
+        const search = state.soundSearch.trim().toLowerCase();
+        const favs = getFavoriteSounds();
+        const pool = window.SOUND_LIBRARY.filter(s => {
+          if (state.soundFavoritesOnly && !favs.has(s.id)) return false;
+          if (activeCat !== 'all' && s.category !== activeCat) return false;
+          if (search && !(
+            s.name.toLowerCase().includes(search) ||
+            s.keyword.toLowerCase().includes(search) ||
+            s.desc.toLowerCase().includes(search)
+          )) return false;
+          return true;
+        });
+        if (pool.length) {
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          window.audioEngine.preview(pick, window.audioEngine.master);
+          // briefly flash the card so the user sees what got picked
+          setTimeout(() => {
+            const card = document.querySelector(`[data-sound-id="${pick.id}"]`);
+            if (card) {
+              card.classList.add('flash-highlight');
+              card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              setTimeout(() => card.classList.remove('flash-highlight'), 1200);
+            }
+          }, 30);
+        }
         break;
       }
 
@@ -711,6 +868,54 @@
         saveBuilder();
         rerenderPanel();
         break;
+
+      // ---- WILDCARDS ----
+      case 'reroll-all-wildcards':
+        rerollAllWildcards();
+        rerenderPanel();
+        break;
+
+      case 'reroll-wildcard':
+        rerollWildcard(actionEl.dataset.id);
+        rerenderPanel();
+        break;
+
+      case 'toggle-wildcard-lock': {
+        const slot = getWildcardSlot(actionEl.dataset.id);
+        if (slot) slot.locked = !slot.locked;
+        rerenderPanel();
+        break;
+      }
+
+      case 'clear-wildcard': {
+        const slot = getWildcardSlot(actionEl.dataset.id);
+        if (slot && !slot.locked) slot.tag = '';
+        rerenderPanel();
+        break;
+      }
+
+      case 'apply-wildcard-preset': {
+        const preset = window.WILDCARD_PRESETS.find(p => p.id === actionEl.dataset.preset);
+        if (preset) {
+          const active = new Set(preset.active);
+          state.wildcard.slots.forEach(s => {
+            s.tag = active.has(s.id) ? randomFrom(window.WILDCARD_POOLS.find(p => p.id === s.id).tags) : '';
+            s.locked = false;
+          });
+        }
+        rerenderPanel();
+        break;
+      }
+
+      case 'goto-builder':
+        state.tab = 'builder';
+        renderPanel(); updateTabButtons();
+        break;
+
+      case 'goto-wildcards':
+        state.tab = 'wildcards';
+        renderPanel(); updateTabButtons();
+        break;
     }
   });
 
@@ -750,6 +955,22 @@
   document.addEventListener('change', function (e) {
     if (e.target.dataset.action === 'toggle-fav-filter') {
       state.soundFavoritesOnly = e.target.checked;
+      rerenderPanel();
+    }
+    if (e.target.dataset.action === 'toggle-wildcard-append') {
+      state.wildcard.appendToPrompt = e.target.checked;
+      rerenderPanel();
+    }
+  });
+
+  // Keyboard shortcut: Space re-rolls all unlocked wildcard cards while on
+  // the Wildcards tab (ignored when typing in an input/textarea).
+  document.addEventListener('keydown', function (e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+    if (e.code === 'Space' && state.tab === 'wildcards') {
+      e.preventDefault();
+      rerollAllWildcards();
       rerenderPanel();
     }
   });
