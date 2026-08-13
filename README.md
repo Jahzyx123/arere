@@ -20,7 +20,7 @@ page falls back to your system fonts and everything still works.
 
 ## What's inside
 
-**Sound Library** — 380+ techno-specific sounds across kicks, snares,
+**Sound Library** — 520+ techno-specific sounds across kicks, snares,
 hats/cymbals, percussion, bass/sub, leads/arps, pads/drones, vocal
 chops, FX/risers, and textures. Every card shows the exact keyword
 phrase to paste into Suno's *Style of Music* field, a plain-English
@@ -104,14 +104,30 @@ js/data-sounds.js       core sound library
 js/data-sounds-v3.js    v3 expansion sounds
 js/data-sounds-v4.js    v4 expansion sounds
 js/data-sounds-v5.js    v5 expansion sounds
+js/data-sounds-v6.js    v6 expansion sounds (world/tonal percussion, FX, textures)
 js/data-wildcards.js    Wildcard Injector tag pools
 js/data-recipes.js      25 full track-formula recipes
 js/data-glossary.js     33 glossary entries
 js/data-cheatsheet.js   Suno mechanics reference data
 js/audio-engine.js      Web Audio synthesis + groove transport scheduler
 js/app.js               UI state, rendering, event wiring
+tools/validate-sounds.js  dev-only headless render check (npm run validate:sounds)
 ```
 
-No dependencies, no `npm install`, nothing to build. Edit the data files
-directly if you want to add your own sounds or recipes — each entry is a
+No dependencies to *run* — just open `index.html`. Edit the data files
+directly if you want to add your own sounds or recipes; each entry is a
 plain JavaScript object, and the app re-reads them on page load.
+
+## Checking the sounds (dev only)
+
+A headless validation script renders every sound in the library through the
+real audio engine inside an offline `AudioContext` and reports any sound
+that throws an error or comes out silent/inaudible:
+
+```
+npm install               # pulls in the web-audio-engine dev dependency
+npm run validate:sounds   # full check + report
+```
+
+The app itself never needs this — it's purely a quality gate for editing the
+sound data.

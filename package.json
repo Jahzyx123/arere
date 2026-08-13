@@ -1,0 +1,13 @@
+{
+  "name": "suno-techno-toolkit",
+  "version": "2.0.0",
+  "description": "Signal Patch — a self-contained techno & sub-techno production companion for Suno.AI (no build step, runs fully in the browser).",
+  "private": true,
+  "scripts": {
+    "validate:sounds": "node tools/validate-sounds.js",
+    "validate:sounds:json": "node tools/validate-sounds.js --json"
+  },
+  "devDependencies": {
+    "web-audio-engine": "^0.13.4"
+  }
+}

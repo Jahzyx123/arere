@@ -1,0 +1,7 @@
+# Dev tooling (only needed for `npm run validate:sounds`)
+node_modules/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log

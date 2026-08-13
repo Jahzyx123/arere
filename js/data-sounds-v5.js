@@ -95,7 +95,7 @@
       desc:'An earthy, soft basket-shaker rattle with a warm grain.',
       role:'An organic, natural shaker texture for afro and deep-tech grooves.',
       engine:'perc', params:{ type:'caxixi', filterFreq:4500, decay:0.4, pitch:3800 } },
-    { id:'perc-electronic-clave', name:'Electronic Clave Click', category:'perc',
+    { id:'perc-electronic-clave-click', name:'Electronic Clave Click', category:'perc',
       keyword:'electronic clave, clean pitched click',
       desc:'A clean, pitched electronic clave-style click.',
       role:'A precise modern marker in minimal and electro-leaning rhythms.',
