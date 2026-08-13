@@ -20,40 +20,62 @@ page falls back to your system fonts and everything still works.
 
 ## What's inside
 
-**Sound Library** — ~60 techno-specific sounds (kicks, hats, percussion,
-basslines, leads/arps, pads/drones, FX/risers, textures). Every card
-shows the exact keyword phrase to paste into Suno's *Style of Music*
-field, a plain-English description of the sound, and producer notes on
-what it actually does in a track. Hit ▶ to hear an original synthesized
-approximation, ⧉ to copy the keyword, or "+ Add to prompt" to stack it
-into the Prompt Builder.
+**Sound Library** — 380+ techno-specific sounds across kicks, snares,
+hats/cymbals, percussion, bass/sub, leads/arps, pads/drones, vocal
+chops, FX/risers, and textures. Every card shows the exact keyword
+phrase to paste into Suno's *Style of Music* field, a plain-English
+description of the sound, and producer notes on what it actually does
+in a track. Hit ▶ to hear an original synthesized approximation, ⧉ to
+copy the keyword, or "+ Add to prompt" to stack it into the Prompt
+Builder. Already-in-prompt sounds are marked on their cards.
 
-**Track Formulas** — 15 full production recipes across techno's core
-subgenres (peak-time, melodic, hard, dub, minimal, acid, industrial,
-hypnotic, Detroit, raw/broken, deep, ambient, tribal, uplifting
-trance-techno crossover, hardgroove). Each one has a ready-to-paste
-style prompt, a bracket-tag arrangement for the Lyrics field, a trimmed
+**Track Formulas** — 25 full production recipes across techno's core
+and modern subgenres (peak-time, melodic, hard, schranz, psy-techno,
+dub, Berlin dub, minimal, Rominimal, acid, industrial, EBM, hypnotic,
+Detroit, raw/broken, deep, ambient, tribal, afro, darkwave, uplifting
+trance-techno crossover, hard trance-techno, hardgroove, Afterlife-style
+melodic deep, and bass techno). Each one has a ready-to-paste style
+prompt, a bracket-tag arrangement for the Lyrics field, a trimmed
 fallback for Suno's older 200-character models, and producer commentary
 on why the combination works.
 
-**Glossary** — 25 rarer/regional subgenre labels (schranz, Rominimal,
-ghettotech, free tekno, and more) with a short description each — extra
-vocabulary to fold into any prompt, without a full recipe attached.
+**Glossary** — 33 rarer/regional subgenre labels (schranz, Rominimal,
+ghettotech, free tekno, neo-trance, DeepChord-style dub, Italo
+hardgroove, and more) with a short description each — extra vocabulary
+to fold into any prompt, without a full recipe attached.
 
-**Prompt Builder** — combines a genre tag, mood tags, your stacked
-sound keywords, BPM, key, and a negative/exclude tag into a live,
-character-counted style prompt, plus a click-to-build structure-tag
-sequence for the Lyrics field. Load any recipe straight into it with
-one click.
+**Prompt Builder** — combines a genre tag, mood/energy tags, production
+tags, your stacked sound keywords, BPM, key, and a negative/exclude tag
+into a live, character-counted, auto-deduplicated style prompt, plus a
+click-to-build structure-tag sequence for the Lyrics field. Load any
+recipe straight into it with one click; the whole builder is saved in
+your browser automatically.
+
+**The groove transport** (top bar, present on every tab) plays a
+four-on-the-floor reference beat with adjustable BPM and swing. Toggle
+"⏵ Layer" on any sound card to hear it locked into that beat — closed
+hats automatically roll as 16ths, sequenced basslines play their
+patterns, and pads/FX/textures fire on bar boundaries.
+
+**🎲 Wildcard Prompt Injector** — five lockable "wildcard" cards
+(Unexpected Instrument, Sonic Space, Rhythm/Feel, Crossover/Source,
+Texture/FX), each holding an array of deliberately off-genre tags.
+Build your core prompt in the Prompt Builder, then hit **Re-roll** to
+append randomized weird tags that push Suno out of its comfort zone.
+Lock 🔒 a card to freeze a tag you love — it survives every re-roll
+while the other cards rotate. Weirdness presets (Mild / Wild /
+Unhinged) decide how many cards are active, and all tags are injected
+just before the negative prompt so exclusions stay last. Press
+**Space** on the tab to re-roll quickly.
 
 **Suno Cheat Sheet** — current character limits by model version, which
 field things belong in, a structure-tag reference, and general
 prompting tips.
 
-**The groove transport** (top bar, present on every tab) plays a
-four-on-the-floor reference beat. Toggle "⏵ Layer in groove" on any
-sound card to hear it locked into that beat instead of as a one-shot —
-handy for judging how a bassline or pad actually sits in a track.
+**Extras:** a **🎲 Surprise me** button on the Sound Library plays a
+random sound from the current filter; the **Audition** button plays a
+whole category through in sequence; and the transport has adjustable
+**BPM and swing** for layering sounds into a live groove.
 
 Favorites (★) and everything you build in the Prompt Builder are kept
 in your browser's local storage on your machine only — nothing is sent
@@ -76,14 +98,18 @@ anywhere.
 ## Folder structure
 
 ```
-index.html            entry point — open this
-css/style.css          all styling
-js/data-sounds.js      sound library data (~60 entries)
-js/data-recipes.js     15 full track-formula recipes
-js/data-glossary.js    25 glossary entries
-js/data-cheatsheet.js  Suno mechanics reference data
-js/audio-engine.js     Web Audio synthesis + groove transport scheduler
-js/app.js              UI state, rendering, event wiring
+index.html              entry point — open this
+css/style.css           all styling
+js/data-sounds.js       core sound library
+js/data-sounds-v3.js    v3 expansion sounds
+js/data-sounds-v4.js    v4 expansion sounds
+js/data-sounds-v5.js    v5 expansion sounds
+js/data-wildcards.js    Wildcard Injector tag pools
+js/data-recipes.js      25 full track-formula recipes
+js/data-glossary.js     33 glossary entries
+js/data-cheatsheet.js   Suno mechanics reference data
+js/audio-engine.js      Web Audio synthesis + groove transport scheduler
+js/app.js               UI state, rendering, event wiring
 ```
 
 No dependencies, no `npm install`, nothing to build. Edit the data files
